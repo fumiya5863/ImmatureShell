@@ -15,8 +15,8 @@ int main()
         pid = fork();
 
         if (pid < 0) {
-            printf("Error: fork(%d) %s\n", errno, strerror(errno));
-            exit(EXIT_FAILURE);
+            printf("Iae: fork(%d) %s\n", errno, strerror(errno));
+            return -1;
         }
 
         if (pid == 0) {
@@ -24,10 +24,9 @@ int main()
         } else {
             wait_pid = wait(&status);
             if (wait_pid == -1) {
-                printf("Error: wait(%d) %s\n", errno, strerror(errno));
-                exit(EXIT_FAILURE);
+                printf("Iae: wait(%d) %s\n", errno, strerror(errno));
+                return -1;
             }
-            printf("\n");
         }
     }
     return 0;
@@ -35,19 +34,22 @@ int main()
 
 static void childProcess()
 {
-    char command[256];
-    char filepath[256] = "/bin/";
-    char *first_command, *command_argv;
+    char buffer[256] = "";
+    char filepath[512] = "/bin/";
+    char *command, *comand_argv = "";
 
     printf("> ");
-    scanf("%[^\n]%*c", command);
-    first_command = strtok(command, " ");
-    command_argv = strtok(NULL, " ");
+    if (scanf("%255[^\n]%*[^\n]", buffer) == EOF) {
+        exit(EXIT_FAILURE);
+    }
+    command = strtok(buffer, " ");
+    comand_argv = strtok(NULL, " ");
     strcat(filepath, command);
-    char *argv[] = {command, command_argv, NULL};
+    char *argv[] = {command, comand_argv, NULL};
 
     if(execve(filepath, argv, NULL) == -1) {
-        printf("Errors: don't %s command", first_command);
+        printf("Iae: command not found: %s\n", command);
+        exit(EXIT_FAILURE);
     }
     exit(EXIT_SUCCESS);
 }
