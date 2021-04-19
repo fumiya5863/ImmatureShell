@@ -5,13 +5,13 @@
 #include <string.h>
 #include <sys/wait.h>
 
-static void childProcess();
+// 内部コマンド
+#include "built_in_command.h"
+
+static int childProcess();
 static void getCommandPath(char command_path[], char command[]);
 static void createCommandPath(char command_path[], char env_path[], char command[]);
 static int fileOpenFlag(char command_path[]);
-
-// 内部コマンド
-static void iaeExit(char command[]);
 
 /**
  * 親プロセス処理
@@ -25,7 +25,7 @@ int main()
 
         if (pid < 0) {
             printf("Iae: fork(%d) %s\n", errno, strerror(errno));
-            return -1;
+            exit(EXIT_FAILURE);
         }
 
         // 子プロセス
@@ -35,38 +35,43 @@ int main()
 
         // 子プロセスが終了するまで待機
         wait(&status);
-        // printf("%d", status);
         if (!WIFEXITED(status)) {
             printf("Iae: wait(%d) %s\n", errno, strerror(errno));
-            return -1;
+            exit(EXIT_FAILURE);
         }
-        printf("%d", WIFEXITED(status));
+
+        // 内部コマンドexit
+        if (WEXITSTATUS(status) == 2) {
+            break;
+        }
     }
-    return 0;
+    exit(EXIT_SUCCESS);
 }
 
 /**
  * 子プロセス処理
 **/
-static void childProcess()
+static int childProcess()
 {
     char buffer[256], command_path[256] = "";
     char *command, *comand_argv;
 
     printf("> ");
     if (scanf("%255[^\n]%*[^\n]", buffer) != 1) {
-        exit(EXIT_SUCCESS);
+        _exit(EXIT_FAILURE);
     }
-    
     command = strtok(buffer, " ");
     comand_argv = strtok(NULL, " ");
     char *argv[] = {command, comand_argv, NULL};
+    
+    // 内部コマンドexit確認
+    iaeExit(command);
 
     // コマンドのパスが存在した場合パスを取得
     getCommandPath(command_path, command);
 
     execve(command_path, argv, NULL);
-    exit(EXIT_SUCCESS);
+    _exit(EXIT_SUCCESS);
 }
 
 /**
@@ -98,7 +103,7 @@ static void getCommandPath(char command_path[], char command[])
     }
 
     printf("Iae: command not found: %s\n", command);
-    exit(EXIT_FAILURE);
+    _exit(EXIT_FAILURE);
 }
 
 /**
@@ -125,16 +130,4 @@ static int fileOpenFlag(char command_path[])
 
     fclose(fp);   
     return 0;
-}
-
-// 内部コマンド
-
-/**
- * 親プロセス終了
-**/
-static void iaeExit(char command[])
-{
-    if (strcmp(command, "exit") == 0) {
-        exit(2);
-    }
 }
