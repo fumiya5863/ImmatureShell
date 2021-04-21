@@ -3,11 +3,13 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/wait.h>
 
 // 内部コマンド
 #include "built_in_command.h"
 
+static void sigintSignalIgnore();
 static int childProcess();
 static void getCommandPath(char command_path[], char command[]);
 static void createCommandPath(char command_path[], char env_path[], char command[]);
@@ -16,8 +18,10 @@ static int fileOpenFlag(char command_path[]);
 /**
  * 親プロセス処理
 **/
-int main()
+int main(void)
 {
+    sigintSignalIgnore();
+
     while(1) {
         int status;
         pid_t pid, wait_pid;
@@ -46,6 +50,22 @@ int main()
         }
     }
     exit(EXIT_SUCCESS);
+}
+
+/**
+ * SIGINTシグナルを無視 
+**/
+static void sigintSignalIgnore()
+{
+    int rc = 0;
+    struct sigaction act;
+    memset(&act, 0, sizeof(act));
+    act.sa_handler = SIG_IGN;
+    act.sa_flags = SA_RESETHAND;
+    rc = sigaction(SIGINT, &act, NULL);
+    if (rc != 0) {
+        exit(EXIT_FAILURE);
+    }
 }
 
 /**
