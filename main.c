@@ -6,7 +6,8 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-// 内部コマンド
+#include "common/constants.h"
+#include "common/function.h"
 #include "built_in_command.h"
 
 static void sigintSignalIgnore();
@@ -21,7 +22,7 @@ static int fileOpenFlag(char command_path[]);
 int main(void)
 {
     sigintSignalIgnore();
-
+    
     while(1) {
         int status;
         pid_t pid, wait_pid;
@@ -48,6 +49,7 @@ int main(void)
         if (WEXITSTATUS(status) == 2) {
             break;
         }
+
     }
     exit(EXIT_SUCCESS);
 }
@@ -73,16 +75,19 @@ static void sigintSignalIgnore()
 **/
 static int childProcess()
 {
-    char buffer[256], command_path[256] = "";
-    char *command, *comand_argv;
+    char buffer[PATHNAME_SIZE], pathname[PATHNAME_SIZE], command_path[PATHNAME_SIZE] = "";
+    char *command, *command_argv;
 
-    printf("> ");
+    getCurrentPath(pathname);
+    printf("%s > ", pathname);
+
     if (scanf("%255[^\n]%*[^\n]", buffer) != 1) {
         _exit(EXIT_FAILURE);
     }
+    
     command = strtok(buffer, " ");
-    comand_argv = strtok(NULL, " ");
-    char *argv[] = {command, comand_argv, NULL};
+    command_argv = strtok(NULL, " ");
+    char *argv[] = {command, command_argv, NULL};
     
     // 内部コマンドexit確認
     iaeExit(command);
@@ -91,6 +96,7 @@ static int childProcess()
     getCommandPath(command_path, command);
 
     execve(command_path, argv, NULL);
+
     _exit(EXIT_SUCCESS);
 }
 
@@ -102,19 +108,19 @@ static void getCommandPath(char command_path[], char command[])
     char *str_env, *env_path;
     char slash[2] = "/";
 
+    // 絶対パスで指定した場合
     strcpy(command_path, command);
     if (fileOpenFlag(command_path)) {
         return;
     }
 
     str_env = getenv("PATH");
-
+    // 相対パスで指定した場合
     env_path = strtok(str_env, ":");
     createCommandPath(command_path, env_path, command);
     if (fileOpenFlag(command_path)) {
         return;
     }
-
     while ((env_path = strtok(NULL, ":")) != NULL) {
         createCommandPath(command_path, env_path, command);
         if (fileOpenFlag(command_path)) {
