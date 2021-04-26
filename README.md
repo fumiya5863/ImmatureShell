@@ -15,7 +15,7 @@ C言語で自作shell開発
 - リダイレクト(未実装)
 
 ## Requirement
-- gcc
+- GNU
 - x86_64
 
 ## How to install
