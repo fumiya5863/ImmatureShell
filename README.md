@@ -2,6 +2,7 @@
 
 ## Overview
 C言語で自作shell開発
+自作でshellを作ってみたいと思っている方の参考になればと思い作成させて頂きました。
 
 ## Features
 
@@ -20,9 +21,6 @@ git https://github.com/fumiya5863/ImmatureShell.git
 make
 ./main
 ```
-
-## Usage
-自作でshellを作ってみたいと思っている方の参考になればと思い作成させて頂きました。
 
 ## Folder structure
 ```
