@@ -27,6 +27,7 @@ git https://github.com/fumiya5863/ImmatureShell.git
 
 ```shell
 make
+cd ImmatureShell
 ./main
 ```
 
