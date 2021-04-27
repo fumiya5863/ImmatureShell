@@ -26,8 +26,8 @@ git https://github.com/fumiya5863/ImmatureShell.git
 ## How to use
 
 ```shell
-make
 cd ImmatureShell
+make
 ./main
 ```
 
