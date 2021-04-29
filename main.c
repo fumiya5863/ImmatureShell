@@ -11,6 +11,7 @@
 #include "built_in_command.h"
 
 static void sigintSignalIgnore();
+static void shellProcess();
 static void childProcess(int pipe_fd[]);
 static void getCommandPath(char command_path[], char command[]);
 static void createCommandPath(char command_path[], char env_path[], char command[]);
@@ -21,20 +22,45 @@ static int fileOpenFlag(char command_path[]);
 **/
 int main(void)
 {
+    // SIGINTシグナルを無視
     sigintSignalIgnore();
     
+    // シェル
+    shellProcess();
+    
+    exit(EXIT_SUCCESS);
+}
+
+/**
+ * SIGINTシグナルを無視
+**/
+static void sigintSignalIgnore()
+{
+    struct sigaction act;
+
+    memset(&act, 0, sizeof(act));
+    act.sa_handler = SIG_IGN;
+    act.sa_flags = SA_RESETHAND;
+
+    if (sigaction(SIGINT, &act, NULL) < 0) {
+        exit(EXIT_FAILURE);
+    }
+}
+
+/**
+ * シェル
+**/
+static void shellProcess()
+{
     while(1) {
         int status, pipe_fd[2];
         pid_t pid, wait_pid;
 
-        if (pipe(pipe_fd) != 0) {
+        if (pipe(pipe_fd) < 0) {
             perror("pipe");
             exit(EXIT_FAILURE);
         }
-        
-        pid = fork();
-
-        if (pid < 0) {
+        if ((pid = fork()) < 0) {
             perror("Iae");
             exit(EXIT_FAILURE);
         }
@@ -51,28 +77,11 @@ int main(void)
             exit(EXIT_FAILURE);
         }
 
-        int exitFlag = runBuiltInCommand(WEXITSTATUS(status), pipe_fd);
-        if (exitFlag == 1) {
+        // ビルトインコマンドがexitの場合は親プロセス終了
+        int exitCommandFlag = runBuiltInCommand(WEXITSTATUS(status), pipe_fd);
+        if (exitCommandFlag == 1) {
             break;
         }
-
-    }
-    exit(EXIT_SUCCESS);
-}
-
-/**
- * SIGINTシグナルを無視 
-**/
-static void sigintSignalIgnore()
-{
-    int rc;
-    struct sigaction act;
-    memset(&act, 0, sizeof(act));
-    act.sa_handler = SIG_IGN;
-    act.sa_flags = SA_RESETHAND;
-    rc = sigaction(SIGINT, &act, NULL);
-    if (rc != 0) {
-        exit(EXIT_FAILURE);
     }
 }
 
@@ -81,27 +90,26 @@ static void sigintSignalIgnore()
 **/
 static void childProcess(int pipe_fd[])
 {
-    char buffer[PATHNAME_SIZE], pathname[PATHNAME_SIZE], command_path[PATHNAME_SIZE] = "";
+    char buffer[PATHNAME_SIZE], current_path[PATHNAME_SIZE], command_path[PATHNAME_SIZE] = "";
     char *command, *command_argv;
 
-    getCurrentPath(pathname);
-    printf("> ");
+    getCurrentPath(current_path);
+    fprintf(stdout, "%s> ", current_path);
 
     if (scanf("%255[^\n]%*[^\n]", buffer) != 1) {
         _exit(EXIT_FAILURE);
     }
     
+    // ユーザーが標準入力した値を分割
     command = strtok(buffer, " ");
     command_argv = strtok(NULL, " ");
-    char *argv[] = {command, command_argv, NULL};
+    char *execve_argv[] = {command, command_argv, NULL};
 
-    // 内部コマンド確認
     builtInCommandJudge(command, command_argv, pipe_fd);
 
-    // コマンドのパスが存在した場合パスを取得
     getCommandPath(command_path, command);
 
-    execve(command_path, argv, NULL);
+    execve(command_path, execve_argv, NULL);
 
     _exit(EXIT_SUCCESS);
 }
@@ -111,8 +119,8 @@ static void childProcess(int pipe_fd[])
 **/
 static void getCommandPath(char command_path[], char command[])
 {
-    char *str_env, *env_path;
     char slash[2] = "/";
+    char *str_env, *env_path;
 
     // 絶対パスで指定した場合
     strcpy(command_path, command);
@@ -150,7 +158,7 @@ static void createCommandPath(char command_path[], char env_path[], char command
 }
 
 /**
- *  コマンドファイルの存在確認 
+ *  コマンドファイルの存在確認
 **/
 static int fileOpenFlag(char command_path[])
 {
