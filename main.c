@@ -14,6 +14,8 @@ static void sigintSignalIgnore();
 static void shellProcess();
 static void childProcess(int pipe_fd[]);
 static void getCommandPath(char command_path[], char command[]);
+static int absoluteCommandPathJudge(char command_path[], char command[]);
+static int relativeCommandPathJudge(char command_path[], char command[]);
 static void createCommandPath(char command_path[], char env_path[], char command[]);
 static int fileOpenFlag(char command_path[]);
 
@@ -21,10 +23,7 @@ static int fileOpenFlag(char command_path[]);
  * 親プロセス処理
 **/
 int main(void)
-{
-    // SIGINTシグナルを無視
-    sigintSignalIgnore();
-    
+{    
     // シェル
     shellProcess();
     
@@ -52,6 +51,9 @@ static void sigintSignalIgnore()
 **/
 static void shellProcess()
 {
+    // SIGINTシグナルを無視
+    sigintSignalIgnore();
+
     while(1) {
         int status, pipe_fd[2];
         pid_t pid, wait_pid;
@@ -90,7 +92,8 @@ static void shellProcess()
 **/
 static void childProcess(int pipe_fd[])
 {
-    char buffer[PATHNAME_SIZE], current_path[PATHNAME_SIZE], command_path[PATHNAME_SIZE] = "";
+    char buffer[PATHNAME_SIZE], current_path[PATHNAME_SIZE];
+    char command_path[PATHNAME_SIZE] = "";
     char *command, *command_argv;
 
     getCurrentPath(current_path);
@@ -119,31 +122,52 @@ static void childProcess(int pipe_fd[])
 **/
 static void getCommandPath(char command_path[], char command[])
 {
-    char slash[2] = "/";
-    char *str_env, *env_path;
-
     // 絶対パスで指定した場合
-    strcpy(command_path, command);
-    if (fileOpenFlag(command_path)) {
+    if (absoluteCommandPathJudge(command_path, command)) {
         return;
     }
 
     // 相対パスで指定した場合
-    str_env = getenv("PATH");
-    env_path = strtok(str_env, ":");
-    createCommandPath(command_path, env_path, command);
-    if (fileOpenFlag(command_path)) {
+    if (relativeCommandPathJudge(command_path, command)) {
         return;
-    }
-    while ((env_path = strtok(NULL, ":")) != NULL) {
-        createCommandPath(command_path, env_path, command);
-        if (fileOpenFlag(command_path)) {
-            return;
-        }
     }
 
     fprintf(stdout, "Iae: command not found: %s\n", command);
     _exit(EXIT_FAILURE);
+}
+
+/**
+ * コマンドが絶対パスかどうか判定
+**/
+static int absoluteCommandPathJudge(char command_path[], char command[])
+{
+    strcpy(command_path, command);
+    return fileOpenFlag(command_path);
+}
+
+/**
+ * コマンドが相対パスかどうか判定
+**/
+static int relativeCommandPathJudge(char command_path[], char command[])
+{
+    char slash[2] = "/";
+    char *str_env, *env_path;
+
+    str_env = getenv("PATH");
+    env_path = strtok(str_env, ":");
+    createCommandPath(command_path, env_path, command);
+    if (fileOpenFlag(command_path)) {
+        return 1;
+    }
+
+    while ((env_path = strtok(NULL, ":")) != NULL) {
+        createCommandPath(command_path, env_path, command);
+        if (fileOpenFlag(command_path)) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 /**
@@ -158,7 +182,7 @@ static void createCommandPath(char command_path[], char env_path[], char command
 }
 
 /**
- *  コマンドファイルの存在確認
+ *  ファイルの存在確認
 **/
 static int fileOpenFlag(char command_path[])
 {

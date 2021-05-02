@@ -5,8 +5,6 @@
 
 #include "built_in_command.h"
 
-static int iaeExitParent();
-static void iaeExitChild();
 static void iaeCdParent(int pipe_fd[]); 
 static void iaeCdChild(char command[], char command_argv[], int pipe_fd[]);
 
@@ -16,8 +14,10 @@ static void iaeCdChild(char command[], char command_argv[], int pipe_fd[]);
 int runBuiltInCommand(int builtInCommandNum, int pipe_fd[])
 {
     if (builtInCommandNum == exitNum) {
-        return iaeExitParent();
-    } else if (builtInCommandNum == cdNum) {
+        return 1;
+    }
+
+    if (builtInCommandNum == cdNum) {
         iaeCdParent(pipe_fd);
     }
     
@@ -30,26 +30,12 @@ int runBuiltInCommand(int builtInCommandNum, int pipe_fd[])
 void builtInCommandJudge(char command[], char command_argv[], int pipe_fd[])
 {
     if (strcmp(command, "exit") == 0) {
-        iaeExitChild();
-    } else if(strcmp(command, "cd") == 0) {
+        _exit(exitNum);
+    }
+    
+    if(strcmp(command, "cd") == 0) {
         iaeCdChild(command, command_argv, pipe_fd);
     }
-}
-
-/**
- * exitコマンド(親プロセス呼び出し)
-**/
-static int iaeExitParent()
-{
-    return 1;
-}
-
-/**
- * exitコマンド(子プロセス呼び出し)
-**/
-static void iaeExitChild()
-{
-    _exit(exitNum);
 }
 
 /**
