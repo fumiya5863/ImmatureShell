@@ -16,9 +16,8 @@ C言語で自作shell開発<br>
 
 ## Requirement
 - Mac
-- GNU
+- Gcc
 - x86_64
-- 2.7 GHz デュアルコアIntel Core i5
 
 ## How to install
 ```shell
