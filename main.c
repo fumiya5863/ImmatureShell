@@ -97,7 +97,7 @@ static void childProcess(int pipe_fd[])
     char *command, *command_argv;
 
     getCurrentPath(current_path);
-    fprintf(stdout, "%s> ", current_path);
+    printf("%s> ", current_path);
 
     if (scanf("%255[^\n]%*[^\n]", buffer) != 1) {
         _exit(EXIT_FAILURE);
@@ -132,7 +132,7 @@ static void getCommandPath(char command_path[], char command[])
         return;
     }
 
-    fprintf(stdout, "Iae: command not found: %s\n", command);
+    fprintf(stderr, "Iae: command not found: %s\n", command);
     _exit(EXIT_FAILURE);
 }
 
